@@ -1,0 +1,8 @@
+/data
+/_pycache_
+/wandb
+/checkpoints/best_seg/tensorboard
+.vscode/settings.json
+.pth
+.pkl
+.png
