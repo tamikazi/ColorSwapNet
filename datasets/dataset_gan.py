@@ -101,7 +101,7 @@ class BaseDataset(torch.utils.data.Dataset):
         img = img.transpose((2, 0, 1))
         
         # Apply normalization and return transformed image as a tensor.
-        img = self.normalize(torch.from_numpy(img.copy())) - 1
+        img = self.normalize(torch.from_numpy(img.copy()))
         return img
 
     def segm_transform(self, segm):

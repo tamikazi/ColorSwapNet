@@ -101,7 +101,7 @@ class BaseDataset(torch.utils.data.Dataset):
         img = img.transpose((2, 0, 1))
         
         # Apply normalization and return transformed image as a tensor.
-        img = self.normalize(torch.from_numpy(img.copy())) - 1
+        img = self.normalize(torch.from_numpy(img.copy()))
         return img
 
     def segm_transform(self, segm):
@@ -109,7 +109,7 @@ class BaseDataset(torch.utils.data.Dataset):
         Transform segmentation mask to tensor with values in the range [-1, 149].
         """
         # Convert segmentation mask from numpy array to long tensor.
-        segm = torch.from_numpy(np.array(segm)).long()
+        segm = torch.from_numpy(np.array(segm)).long() - 1
         return segm
 
     def round2nearest_multiple(self, x, p):
