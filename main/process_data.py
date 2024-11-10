@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.constants import ROOT_DATASET, LIST_SCENES
+from utils.utils import count_files, move_and_rename_files, delete_files
 
 IMAGE_TRAINING_ROOT = ROOT_DATASET + "/images/training"
 IMAGE_VALIDATION_ROOT = ROOT_DATASET + "/images/validation"
@@ -14,45 +15,6 @@ ANNOTATION_TEST_ROOT = ROOT_DATASET + "/annotations/test"
 
 SCENE_CATEGORIES_FILE = ROOT_DATASET + '/sceneCategories.txt'
 OUTPUT_FILE = ROOT_DATASET + '/scene_categories_not_in_list.txt'
-
-def count_files(directory):
-    """Count the number of files in a directory."""
-    return len([file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))])
-
-def move_and_rename_files(src_dir_images, src_dir_annotations, dest_dir_images, dest_dir_annotations, num_files, old_str, new_str):
-    """Move a randomized selection of files from src_dir to dest_dir and rename the specified part of filename."""
-    files = [f for f in os.listdir(src_dir_images) if os.path.isfile(os.path.join(src_dir_images, f))]
-    random.shuffle(files)  # Randomize the order of files
-    files_to_move = files[-num_files:]  # Select the required number of files
-    
-    for file_name in files_to_move:
-        new_file_name = file_name.replace(old_str, new_str)
-
-        src_path = os.path.join(src_dir_images, file_name)
-        dest_path = os.path.join(dest_dir_images, new_file_name)
-        shutil.move(src_path, dest_path)
-
-        src_path = os.path.join(src_dir_annotations, file_name.replace("jpg", "png"))
-        dest_path = os.path.join(dest_dir_annotations, new_file_name.replace("jpg", "png"))
-        shutil.move(src_path, dest_path)
-
-def delete_files(image_filename, images_train_dir, annotations_train_dir, images_val_dir, annotations_val_dir):
-    """Delete corresponding image and annotation files based on the image filename."""
-    annotation_filename_png = image_filename + ".png"
-    image_filename_jpg = image_filename + ".jpg"
-    paths = [
-        (images_train_dir, annotations_train_dir),
-        (images_val_dir, annotations_val_dir)
-    ]
-
-    for image_dir, annotation_dir in paths:
-        image_path = os.path.join(image_dir, image_filename_jpg)
-        annotation_path = os.path.join(annotation_dir, annotation_filename_png)
-
-        if os.path.exists(image_path):
-            os.remove(image_path)
-        if os.path.exists(annotation_path):
-            os.remove(annotation_path)
 
 def main():
     # read the scene categories file and delete files with scenes not in LIST_SCENES
