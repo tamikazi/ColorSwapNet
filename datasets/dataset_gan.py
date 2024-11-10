@@ -12,11 +12,11 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.utils import imresize
 from utils.constants import IMAGENET_MEAN, \
                             IMAGENET_STD, \
-                            IMG_SIZES, \
-                            IMG_MAX_SIZE, \
-                            PADDING, \
+                            IMG_SIZES_GAN, \
+                            IMG_MAX_SIZE_GAN, \
+                            PADDING_GAN, \
                             LIST_SCENES, \
-                            SEGM_DOWNSAMPLING_RATE
+                            SEGM_DOWNSAMPLING_RATE_GAN
 
 def create_scene_dict(path, list_scenes):
     # Initialize an empty dictionary to store scene mappings.
@@ -58,9 +58,9 @@ class BaseDataset(torch.utils.data.Dataset):
         self.annotation_root = annotation_root
         
         # Define dataset parameters.
-        self.imgSizes = IMG_SIZES
-        self.imgMaxSize = IMG_MAX_SIZE
-        self.padding_constant = PADDING
+        self.imgSizes = IMG_SIZES_GAN
+        self.imgMaxSize = IMG_MAX_SIZE_GAN
+        self.padding_constant = PADDING_GAN
         self.list_scenes = LIST_SCENES
 
         # Parse and store the list of sample files.
@@ -101,7 +101,7 @@ class BaseDataset(torch.utils.data.Dataset):
         img = img.transpose((2, 0, 1))
         
         # Apply normalization and return transformed image as a tensor.
-        img = self.normalize(torch.from_numpy(img.copy()))
+        img = self.normalize(torch.from_numpy(img.copy())) - 1
         return img
 
     def segm_transform(self, segm):
@@ -134,7 +134,7 @@ class TrainDataset(BaseDataset):
         self.num_sample = len(self.list_sample)  # Total number of samples.
 
         # Additional settings for segmentation and tracking batch state.
-        self.segm_downsampling_rate = SEGM_DOWNSAMPLING_RATE
+        self.segm_downsampling_rate = SEGM_DOWNSAMPLING_RATE_GAN
         self.cur_idx = 0
         self.if_shuffled = False  # To track if the samples have been shuffled.
 
@@ -257,7 +257,7 @@ class TrainDataset(BaseDataset):
             # Transform image and segmentation data to tensors.
             img = self.img_transform(img)
             segm = self.segm_transform(segm)
-            segm[segm > 1] = 0  # Wall is 1, everything else is 0.
+            segm[segm > 0] = 1  # Wall is 0, everything else is 1.
 
             # Store transformed samples in the batch tensor.
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
@@ -313,7 +313,7 @@ class ValDataset(BaseDataset):
         # Apply transformations to the image and segmentation data.
         img = self.img_transform(img)
         segm = self.segm_transform(segm)
-        segm[segm > 1] = 0  # Wall is 1, everything else is 0.
+        segm[segm > 0] = 1  # Wall is 0, everything else is 1.
 
         # Return a dictionary with transformed image data, segmentation label, and image name.
         return {'img_data': img[None], 'seg_label': segm, 'name': this_record['fpath_img'].split('/')[-1]}
@@ -368,7 +368,7 @@ class TestDataset(BaseDataset):
         # Apply transformations to the image and segmentation data.
         img = self.img_transform(img)
         segm = self.segm_transform(segm)
-        segm[segm > 1] = 0  # Wall is 1, everything else is 0.
+        segm[segm > 0] = 1  # Wall is 0, everything else is 1.
 
         # Return a dictionary with transformed image data, segmentation label, and image name.
         return {'img_data': img[None], 'seg_label': segm, 'name': this_record['fpath_img'].split('/')[-1]}
