@@ -32,6 +32,12 @@ Notes:
 
 There's two separate datasets because the input to the gan might be slightly different in terms of image size, which would change how the mask was downsampled. Same for the resnet model, not exactly sure what would be different so separated them for now.
 
+Make sure to ignore index -1 at some point, for example in the loss function:
+```
+crit = nn.NLLLoss(ignore_index=-1)
+```
+Index -1 are don't cares, 0 is wall, 1 is everything else.
+
 ---
 
 ## Image Segmentation
