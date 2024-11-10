@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from datasets.dataset_seg import TrainDataset, ValDataset, TestDataset
-
 def count_files(directory):
     """Count the number of files in a directory."""
     return len([file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))])
@@ -68,6 +66,8 @@ def create_data_loaders(
     collate_fn_val=lambda x: x,
     collate_fn_test=lambda x: x
 ):
+    from datasets.dataset_seg import TrainDataset, ValDataset, TestDataset
+
     # Training dataset and loader
     dataset_train = TrainDataset(
         root_dataset=root_dataset,
