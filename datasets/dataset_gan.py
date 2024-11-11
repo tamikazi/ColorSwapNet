@@ -144,6 +144,12 @@ class TrainDataset(BaseDataset):
         # Load scene information and count the number of training examples for scenes of interest.
         self.scene_dict, _, num_ex_train = create_scene_dict(scene_categories, self.list_scenes)
 
+        self.target_colors = [
+            [1.0, 0.0, 0.0],  # Wall (red)
+            [0.0, 1.0, 0.0],  # Everything else (green)
+            [0.0, 0.0, 1.0]   # Background (blue)
+        ]
+
     def _get_sub_batch(self):
         """
         Group images with similar aspect ratios into a sub-batch.
@@ -263,7 +269,10 @@ class TrainDataset(BaseDataset):
             batch_images[i][:, :img.shape[1], :img.shape[2]] = img
             batch_segms[i][:segm.shape[0], :segm.shape[1]] = segm
 
-        return {'img_data': batch_images, 'seg_label': batch_segms}
+            target_color = random.choice(self.target_colors)
+            target_color = torch.tensor(target_color, dtype=torch.float32)
+
+        return {'img_data': batch_images, 'seg_label': batch_segms, 'target_color': target_color}
 
     def __len__(self):
         return int(1e8)
