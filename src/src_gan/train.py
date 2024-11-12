@@ -75,16 +75,40 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
         optimizer_D.step()
 
         # Logging losses
-        writer.add_scalar('Loss/Generator', loss_G.item(), epoch * len(dataloader) + i)
-        writer.add_scalar('Loss/Discriminator', loss_D.item(), epoch * len(dataloader) + i)
-        writer.add_scalar('Loss/Generator/Adversarial', loss_GAN.item(), epoch * len(dataloader) + i)
-        writer.add_scalar('Loss/Generator/Cycle', loss_cycle.item(), epoch * len(dataloader) + i)
-        writer.add_scalar('Loss/Generator/Perceptual', loss_perceptual.item(), epoch * len(dataloader) + i)
+        global_step = epoch * len(dataloader) + i
+        writer.add_scalar('Loss/Generator', loss_G.item(), global_step)
+        writer.add_scalar('Loss/Discriminator', loss_D.item(), global_step)
+        writer.add_scalar('Loss/Generator/Adversarial', loss_GAN.item(), global_step)
+        writer.add_scalar('Loss/Generator/Cycle', loss_cycle.item(), global_step)
+        writer.add_scalar('Loss/Generator/Perceptual', loss_perceptual.item(), global_step)
 
-        # Save generated images every N batches
+        # Log images to TensorBoard every N batches
         if i % 100 == 0:
+            # Prepare images for logging
             # Denormalize images if necessary
-            img_grid = torchvision.utils.make_grid(fake_images.data[:16], nrow=4, normalize=True)
-            writer.add_image(f'Generated images', img_grid, epoch * len(dataloader) + i)
+            def denorm(x):
+                return (x + 1) / 2  # If using Tanh activation
+
+            # Log input images
+            img_grid_input = torchvision.utils.make_grid(denorm(real_images[:4]), nrow=4, normalize=True)
+            writer.add_image('Input/Real Images', img_grid_input, global_step)
+
+            # Log masks
+            masks_rgb = masks.repeat(1, 3, 1, 1)  # Convert single channel mask to 3 channels
+            img_grid_masks = torchvision.utils.make_grid(masks_rgb[:4], nrow=4, normalize=False)
+            writer.add_image('Input/Masks', img_grid_masks, global_step)
+
+            # Log target colors
+            target_colors_images = target_colors[:, :, None, None].repeat(1, 1, real_images.size(2), real_images.size(3))
+            img_grid_target_colors = torchvision.utils.make_grid(denorm(target_colors_images[:4]), nrow=4, normalize=True)
+            writer.add_image('Input/Target Colors', img_grid_target_colors, global_step)
+
+            # Log generated images
+            img_grid_fake = torchvision.utils.make_grid(denorm(fake_images[:4]), nrow=4, normalize=True)
+            writer.add_image('Output/Generated Images', img_grid_fake, global_step)
+
+            # Optionally, log reconstructed images
+            img_grid_rec = torchvision.utils.make_grid(denorm(rec_images[:4]), nrow=4, normalize=True)
+            writer.add_image('Output/Reconstructed Images', img_grid_rec, global_step)
 
     return loss_G.item(), loss_D.item()

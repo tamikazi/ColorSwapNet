@@ -25,8 +25,8 @@ class GANDataset(Dataset):
         ])
 
         self.mask_transform = transforms.Compose([
-            transforms.Resize((256, 256)),
-            transforms.ToTensor(),
+            transforms.Resize((256, 256), interpolation=Image.NEAREST),
+            # Do not convert to tensor yet
         ])
 
         self.target_colors = target_colors  # List of target colors (list of RGB tuples in range [0,1])
@@ -35,19 +35,39 @@ class GANDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        # Load image
+        # Load image and mask paths
         image_path = self.image_paths[idx]
         mask_path = self.mask_paths[idx]
 
+        # Load image
         image = Image.open(image_path).convert('RGB')
-        mask = Image.open(mask_path).convert('L')
+        image = self.transform(image)  # Shape: [3, H, W]
 
-        # Apply transformations
-        image = self.transform(image)
+        # Load mask
+        mask = Image.open(mask_path)
+        # Handle different mask modes
+        if mask.mode == 'RGBA':
+            # If mask has an alpha channel, extract it
+            alpha = mask.split()[-1]
+            mask = alpha
+        elif mask.mode != 'L':
+            mask = mask.convert('L')
+
+        # Apply mask transformations
         mask = self.mask_transform(mask)
 
-        # Invert mask: walls (value 0) become 1, others become 0
-        mask = (mask == 0).float()
+        # Convert mask to numpy array
+        mask_array = np.array(mask)
+        # Threshold the mask to ensure binary values
+        threshold = 128  # Adjust threshold if needed
+        mask_array = (mask_array < threshold).astype(np.float32)  # Walls as 1, others as 0
+
+        # Convert mask to tensor
+        mask_tensor = torch.tensor(mask_array).unsqueeze(0)  # Shape: [1, H, W]
+
+        # Ensure mask is the same size as the image
+        if mask_tensor.shape[1:] != image.shape[1:]:
+            mask_tensor = torch.nn.functional.interpolate(mask_tensor.unsqueeze(0), size=image.shape[1:], mode='nearest').squeeze(0)
 
         # Get target color
         if self.target_colors:
@@ -57,11 +77,16 @@ class GANDataset(Dataset):
             # Generate a random target color (RGB values between 0 and 1)
             target_color = torch.rand(3)
 
+        # Diagnostic: Check mask unique values
+        unique_values = torch.unique(mask_tensor)
+        if unique_values.numel() > 2:
+            print(f"Warning: Mask at index {idx} has more than two unique values: {unique_values}")
+
         sample = {
             'image': image,
-            'mask': mask,
+            'mask': mask_tensor,
             'target_color': target_color,
-            'image_path': self.image_paths[idx]
+            'image_path': image_path
         }
 
         return sample
