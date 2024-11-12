@@ -19,26 +19,42 @@ class GANDataset(Dataset):
 
         assert len(self.image_paths) == len(self.mask_paths), "Number of images and masks should be the same."
 
-        self.transform = transform if transform else transforms.ToTensor()
-        self.target_colors = target_colors
+        self.transform = transform if transform else transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+        ])
+
+        self.mask_transform = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.ToTensor(),
+        ])
+
+        self.target_colors = target_colors  # List of target colors (list of RGB tuples in range [0,1])
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         # Load image
-        image = Image.open(self.image_paths[idx]).convert('RGB')
-        image = self.transform(image)
+        image_path = self.image_paths[idx]
+        mask_path = self.mask_paths[idx]
 
-        # Load mask
-        mask = Image.open(self.mask_paths[idx]).convert('L')
-        mask = transforms.ToTensor()(mask)
-        mask = (mask > 0).float()  # Convert to binary mask
+        image = Image.open(image_path).convert('RGB')
+        mask = Image.open(mask_path).convert('L')
+
+        # Apply transformations
+        image = self.transform(image)
+        mask = self.mask_transform(mask)
+
+        # Invert mask: walls (value 0) become 1, others become 0
+        mask = (mask == 0).float()
 
         # Get target color
         if self.target_colors:
             target_color = self.target_colors[idx % len(self.target_colors)]
+            target_color = torch.tensor(target_color).float()  # Ensure it's a tensor
         else:
+            # Generate a random target color (RGB values between 0 and 1)
             target_color = torch.rand(3)
 
         sample = {

@@ -1,5 +1,5 @@
 /data
-/_pycache_
+**/__pycache__
 /wandb
 /checkpoints/best_seg/tensorboard
 .vscode/settings.json
@@ -7,3 +7,6 @@
 .pkl
 .png
 .slurm
+/main/checkpoints
+/main/output_images
+/main/runs

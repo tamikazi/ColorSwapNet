@@ -1,8 +1,11 @@
 import numpy as np
 import torch
 
-ROOT_DATASET = "/home/shaakira.gadiwan/project/data/ADEChallengeData2016"
-CKPT_DIR_PATH_SEG = "/home/shaakira.gadiwan/project/best_models"
+# ROOT_DATASET = "/home/shaakira.gadiwan/project/data/ADEChallengeData2016"
+ROOT_DATASET = "C:/Users/tahmi/Documents/MENG2023/ENEL645/ADEChallengeData2016_processed/ADEChallengeData2016"
+
+# CKPT_DIR_PATH_SEG = "/home/shaakira.gadiwan/project/best_models"
+CKPT_DIR_PATH_SEG = "C:/Users/tahmi/Documents/MENG2023/ENEL645/models"
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)

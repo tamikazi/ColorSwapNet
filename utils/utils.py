@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+def identity_collate(batch):
+    return batch
+
 def count_files(directory):
     """Count the number of files in a directory."""
     return len([file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file))])

@@ -1,70 +1,93 @@
 import os
 import sys
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # Suppress INFO messages
+# main.py
+from torch.utils.tensorboard import SummaryWriter
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from utils.constants import ROOT_DATASET, DEVICE, NUM_WORKERS, BATCH_PER_GPU
-from utils.utils import create_data_loaders, not_None_collate, visualize_sample
+import torch
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
-IMAGE_TRAINING_ROOT = ROOT_DATASET + "/images/training"
-IMAGE_VALIDATION_ROOT = ROOT_DATASET + "/images/validation"
-IMAGE_TEST_ROOT = ROOT_DATASET + "/images/test"
-ANNOTATION_TRAINING_ROOT = ROOT_DATASET + "/annotations/training"
-ANNOTATION_VALIDATION_ROOT = ROOT_DATASET + "/annotations/validation"
-ANNOTATION_TEST_ROOT = ROOT_DATASET + "/annotations/test"
+from datasets.dataset_gan import GANDataset
+from models.models_gan.generator import Generator
+from models.models_gan.discriminator import Discriminator
+from src.src_gan.train import train_one_epoch
+from src.src_gan.eval import evaluate
+from src.src_gan.test import test
+
+from utils.constants import ROOT_DATASET, DEVICE, NUM_WORKERS, BATCH_PER_GPU
 
 def main():
-    # init
-    data_loaders = create_data_loaders(
-    root_dataset=ROOT_DATASET,
-    image_training_root=IMAGE_TRAINING_ROOT,
-    annotation_training_root=ANNOTATION_TRAINING_ROOT,
-    image_validation_root=IMAGE_VALIDATION_ROOT,
-    annotation_validation_root=ANNOTATION_VALIDATION_ROOT,
-    image_test_root=IMAGE_TEST_ROOT,
-    annotation_test_root=ANNOTATION_TEST_ROOT,
-    batch_per_gpu=BATCH_PER_GPU,
-    num_workers=NUM_WORKERS,
-    collate_fn_train=not_None_collate
-    )
+    # Directories
+    IMAGE_TRAINING_ROOT = ROOT_DATASET + "/images/training"
+    IMAGE_VALIDATION_ROOT = ROOT_DATASET + "/images/validation"
+    IMAGE_TEST_ROOT = ROOT_DATASET + "/images/test"
+    MASK_TRAINING_ROOT = ROOT_DATASET + "/annotations/training"
+    MASK_VALIDATION_ROOT = ROOT_DATASET + "/annotations/validation"
+    MASK_TEST_ROOT = ROOT_DATASET + "/annotations/test"
 
-    # Access the loaders and iterators
-    train_loader = data_loaders["train_loader"]
-    train_iterator = data_loaders["train_iterator"]
-    val_loader = data_loaders["val_loader"]
-    val_iterator = data_loaders["val_iterator"]
-    test_loader = data_loaders["test_loader"]
-    test_iterator = data_loaders["test_iterator"]
+    # Hyperparameters
+    batch_size = 16
+    num_epochs = 50
+    learning_rate = 0.0002
+    device = DEVICE
 
-    # Sample from the training loader
-    batch_train = next(train_iterator)
-    img_data_train, seg_label_train = batch_train[0]['img_data'], batch_train[0]['seg_label']
+    # Transformations
+    transform = transforms.Compose([
+        transforms.Resize((256, 256)),
+        transforms.ToTensor(),
+    ])
 
-    # Check batch size and tensor shapes
-    print(f"Training Batch - Image shape: {img_data_train.shape}, Mask shape: {seg_label_train.shape}")
+    # Create datasets
+    train_dataset = GANDataset(IMAGE_TRAINING_ROOT, MASK_TRAINING_ROOT, transform=transform)
+    val_dataset = GANDataset(IMAGE_VALIDATION_ROOT, MASK_VALIDATION_ROOT, transform=transform)
+    test_dataset = GANDataset(IMAGE_TEST_ROOT, MASK_TEST_ROOT, transform=transform)
 
-    # Visualize the first sample in the training batch
-    visualize_sample(img_data_train[0], seg_label_train[0], "Training Sample", "training_sample.png")
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
 
-    # Sample from the validation loader
-    batch_val = next(val_iterator)
-    img_data_val, seg_label_val, name_val = batch_val[0]['img_data'], batch_val[0]['seg_label'], batch_val[0]['name']
+    # Initialize models
+    generator = Generator().to(device)
+    discriminator = Discriminator().to(device)
 
-    # Check tensor shapes and name
-    print(f"Validation Sample - Name: {name_val}, Image shape: {img_data_val.shape}, Mask shape: {seg_label_val.shape}")
+    # Loss functions
+    criterion_GAN = torch.nn.BCELoss()
+    criterion_cycle = torch.nn.L1Loss()
+    criterion_perceptual = torch.nn.MSELoss()
 
-    # Visualize the validation sample
-    visualize_sample(img_data_val, seg_label_val, name_val, "validation_sample.png")
+    # Optimizers
+    optimizer_G = torch.optim.Adam(generator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
+    optimizer_D = torch.optim.Adam(discriminator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
 
-    # Sample from the validation loader
-    batch_test = next(test_iterator)
-    img_data_test, seg_label_test, name_test = batch_test[0]['img_data'], batch_test[0]['seg_label'], batch_test[0]['name']
+    # Initialize TensorBoard writer
+    writer = SummaryWriter(log_dir='runs/gan_training')
 
-    # Check tensor shapes and name
-    print(f"Test Sample - Name: {name_test}, Image shape: {img_data_test.shape}, Mask shape: {seg_label_test.shape}")
+    # Training loop
+    for epoch in range(1, num_epochs + 1):
+        print(f"Epoch {epoch}/{num_epochs}")
+        train_loss_G, train_loss_D = train_one_epoch(
+            generator, discriminator, train_loader, optimizer_G, optimizer_D,
+            criterion_GAN, criterion_cycle, criterion_perceptual, epoch, device, writer
+        )
 
-    # Visualize the validation sample
-    visualize_sample(img_data_test, seg_label_test, name_test, "test_sample.png")
+        # Evaluate on validation set
+        evaluate(generator, val_loader, epoch, device, output_dir='output_images')
+
+        # Save models
+        torch.save(generator.state_dict(), f'checkpoints/generator_epoch_{epoch}.pth')
+        torch.save(discriminator.state_dict(), f'checkpoints/discriminator_epoch_{epoch}.pth')
+
+    # Close the writer
+    writer.close()
+
+    # Testing after training
+    print("Testing the model on the test dataset...")
+    test_output_dir = 'test_output_images'
+    test(generator, test_loader, device, output_dir=test_output_dir)
+    print(f"Test images have been saved to {test_output_dir}")
 
 if __name__ == '__main__':
     main()

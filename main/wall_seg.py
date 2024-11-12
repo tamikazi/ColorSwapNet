@@ -13,7 +13,7 @@ from models.models_seg.models import SegmentationModule, build_encoder, build_de
 from src.src_seg.train import create_optimizers, train_one_epoch, checkpoint
 from src.src_seg.eval import validation_step
 from utils.constants import ROOT_DATASET, CKPT_DIR_PATH_SEG, DEVICE, NUM_WORKERS, BATCH_PER_GPU, OPTIMIZER_PARAMETERS_SEG, NUM_EPOCHS_SEG
-from utils.utils import create_data_loaders, not_None_collate, visualize_sample
+from utils.utils import create_data_loaders, not_None_collate, visualize_sample, identity_collate
 
 IMAGE_TRAINING_ROOT = ROOT_DATASET + "/images/training"
 IMAGE_VALIDATION_ROOT = ROOT_DATASET + "/images/validation"
@@ -34,7 +34,9 @@ def main():
     annotation_test_root=ANNOTATION_TEST_ROOT,
     batch_per_gpu=BATCH_PER_GPU,
     num_workers=NUM_WORKERS,
-    collate_fn_train=not_None_collate
+    collate_fn_train=not_None_collate,
+    collate_fn_val=identity_collate,
+    collate_fn_test=identity_collate
     )
 
     # Access the loaders and iterators
