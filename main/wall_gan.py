@@ -27,6 +27,11 @@ def main():
     MASK_VALIDATION_ROOT = ROOT_DATASET + "/annotations/validation"
     MASK_TEST_ROOT = ROOT_DATASET + "/annotations/test"
 
+    # Create output directories if they don't exist
+    os.makedirs('checkpoints', exist_ok=True)
+    os.makedirs('output_images', exist_ok=True)
+    os.makedirs('test_output_images', exist_ok=True)
+
     # Hyperparameters
     batch_size = 16
     num_epochs = 50

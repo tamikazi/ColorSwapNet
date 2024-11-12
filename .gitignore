@@ -6,7 +6,8 @@
 .pth
 .pkl
 .png
-.slurm
+**.slurm
+**.out
 /main/checkpoints
 /main/output_images
 /main/runs
