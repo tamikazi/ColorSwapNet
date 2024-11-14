@@ -4,14 +4,10 @@ import torchvision
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
-from torchvision.models import vgg19
 
-def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer_D, criterion_GAN, criterion_cycle, criterion_perceptual, epoch, device, writer):
+def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer_D, criterion_GAN, criterion_L1, epoch, device, writer, lambda_L1=100):
     generator.train()
     discriminator.train()
-
-    # For perceptual loss using VGG19
-    vgg = vgg19(pretrained=True).features.to(device).eval()
 
     for i, batch in enumerate(tqdm(dataloader)):
         real_images = batch['image'].to(device)
@@ -29,22 +25,16 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
         # Discriminator's opinion on the generated images
         pred_fake = discriminator(fake_images, target_colors)
 
-        valid = torch.ones_like(pred_fake, device=device, requires_grad=False)
+        valid = torch.ones_like(pred_fake, device=device, requires_grad=False).to(device)
 
         # Adversarial loss for generator
         loss_GAN = criterion_GAN(pred_fake, valid)
 
-        # Cycle consistency loss (identity loss)
-        rec_images = generator(fake_images, masks, target_colors)
-        loss_cycle = criterion_cycle(rec_images, real_images)
-
-        # Perceptual loss
-        features_real = vgg(real_images)
-        features_fake = vgg(fake_images)
-        loss_perceptual = criterion_perceptual(features_fake, features_real)
+        # L1 loss to preserve non-wall regions
+        loss_L1 = criterion_L1(fake_images * (1 - masks), real_images * (1 - masks))
 
         # Total generator loss
-        loss_G = loss_GAN + loss_cycle * 10.0 + loss_perceptual * 1.0
+        loss_G = loss_GAN + lambda_L1 * loss_L1
 
         loss_G.backward()
         optimizer_G.step()
@@ -56,15 +46,13 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
 
         # Discriminator's opinion on real images
         pred_real = discriminator(real_images, target_colors)
-        valid = torch.ones_like(pred_real, device=device, requires_grad=False)
-        fake = torch.zeros_like(pred_real, device=device, requires_grad=False)
 
         # Loss for real images
         loss_real = criterion_GAN(pred_real, valid)
 
         # Discriminator's opinion on fake images
         pred_fake = discriminator(fake_images.detach(), target_colors)
-
+        fake = torch.zeros_like(pred_fake, requires_grad=False).to(device)
         # Loss for fake images
         loss_fake = criterion_GAN(pred_fake, fake)
 
@@ -78,9 +66,6 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
         global_step = epoch * len(dataloader) + i
         writer.add_scalar('Loss/Generator', loss_G.item(), global_step)
         writer.add_scalar('Loss/Discriminator', loss_D.item(), global_step)
-        writer.add_scalar('Loss/Generator/Adversarial', loss_GAN.item(), global_step)
-        writer.add_scalar('Loss/Generator/Cycle', loss_cycle.item(), global_step)
-        writer.add_scalar('Loss/Generator/Perceptual', loss_perceptual.item(), global_step)
 
         # Log images to TensorBoard every N batches
         if i % 100 == 0:
