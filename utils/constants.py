@@ -13,7 +13,7 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_PER_GPU = 2
-NUM_WORKERS = 2
+NUM_WORKERS = 6
 
 NUM_ITER_PER_EPOCH_SEG = 5000
 NUM_EPOCHS_SEG = 20

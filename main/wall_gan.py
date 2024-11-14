@@ -59,8 +59,7 @@ def main():
 
     # Loss functions
     criterion_GAN = torch.nn.BCELoss()
-    criterion_cycle = torch.nn.L1Loss()
-    criterion_perceptual = torch.nn.MSELoss()
+    criterion_L1 = torch.nn.L1Loss()
 
     # Optimizers
     optimizer_G = torch.optim.Adam(generator.parameters(), lr=learning_rate, betas=(0.5, 0.999))
@@ -74,7 +73,7 @@ def main():
         print(f"Epoch {epoch}/{num_epochs}")
         train_loss_G, train_loss_D = train_one_epoch(
             generator, discriminator, train_loader, optimizer_G, optimizer_D,
-            criterion_GAN, criterion_cycle, criterion_perceptual, epoch, device, writer
+            criterion_GAN, criterion_L1, epoch, device, writer
         )
 
         # Evaluate on validation set
