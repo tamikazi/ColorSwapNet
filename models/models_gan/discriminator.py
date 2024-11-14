@@ -15,7 +15,6 @@ class Discriminator(nn.Module):
             nn.LeakyReLU(0.2, inplace=True),
             # Additional layers...
             nn.Conv2d(128, 1, kernel_size=4, stride=1, padding=1),
-            nn.Sigmoid()
         )
 
     def forward(self, image, target_color):
