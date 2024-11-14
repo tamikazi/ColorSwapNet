@@ -1,7 +1,6 @@
 import os
 import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # Suppress INFO messages
-# main.py
 from torch.utils.tensorboard import SummaryWriter
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 

@@ -58,9 +58,8 @@ class GANDataset(Dataset):
 
         # Convert mask to numpy array
         mask_array = np.array(mask)
-        # Threshold the mask to ensure binary values
-        threshold = 128  # Adjust threshold if needed
-        mask_array = (mask_array < threshold).astype(np.float32)  # Walls as 1, others as 0
+
+        mask_array = (mask_array == 0).astype(np.float32)  # Walls as 1, others as 0
 
         # Convert mask to tensor
         mask_tensor = torch.tensor(mask_array).unsqueeze(0)  # Shape: [1, H, W]
