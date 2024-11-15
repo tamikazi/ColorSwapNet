@@ -3,7 +3,6 @@
 import torchvision
 from tqdm import tqdm
 import torch
-import torch.nn.functional as F
 
 def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer_D, criterion_GAN, criterion_L1, epoch, device, writer, lambda_L1=100):
     generator.train()
@@ -11,7 +10,7 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
 
     for i, batch in enumerate(tqdm(dataloader)):
         real_images = batch['image'].to(device)
-        masks = batch['mask'].to(device)
+        segmented_images = batch['segmented_image'].to(device)
         target_colors = batch['target_color'].to(device)
 
         # -----------------
@@ -20,18 +19,15 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
         optimizer_G.zero_grad()
 
         # Generate fake images
-        fake_images = generator(real_images, masks, target_colors)
+        fake_images = generator(real_images, segmented_images, target_colors)
 
-        # Discriminator's opinion on the generated images
+        # Adversarial loss
         pred_fake = discriminator(fake_images, target_colors)
-
-        valid = torch.ones_like(pred_fake, device=device, requires_grad=False).to(device)
-
-        # Adversarial loss for generator
+        valid = torch.ones_like(pred_fake, requires_grad=False).to(device)
         loss_GAN = criterion_GAN(pred_fake, valid)
 
-        # L1 loss to preserve non-wall regions
-        loss_L1 = criterion_L1(fake_images * (1 - masks), real_images * (1 - masks))
+        # L1 loss to encourage similarity to the input image
+        loss_L1 = criterion_L1(fake_images, real_images)
 
         # Total generator loss
         loss_G = loss_GAN + lambda_L1 * loss_L1
@@ -44,16 +40,13 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
         # ---------------------
         optimizer_D.zero_grad()
 
-        # Discriminator's opinion on real images
-        pred_real = discriminator(real_images, target_colors)
-
         # Loss for real images
+        pred_real = discriminator(real_images, target_colors)
         loss_real = criterion_GAN(pred_real, valid)
 
-        # Discriminator's opinion on fake images
+        # Loss for fake images
         pred_fake = discriminator(fake_images.detach(), target_colors)
         fake = torch.zeros_like(pred_fake, requires_grad=False).to(device)
-        # Loss for fake images
         loss_fake = criterion_GAN(pred_fake, fake)
 
         # Total discriminator loss
@@ -69,31 +62,31 @@ def train_one_epoch(generator, discriminator, dataloader, optimizer_G, optimizer
 
         # Log images to TensorBoard every N batches
         if i % 100 == 0:
+            # Denormalize images from [-1, 1] to [0, 1]
+            def denormalize(tensor):
+                return (tensor + 1) / 2
+
             # Prepare images for logging
-            # Denormalize images if necessary
-            def denorm(x):
-                return (x + 1) / 2  # If using Tanh activation
+            input_image = denormalize(real_images[:4].cpu())
+            input_mask = segmented_images[:4].cpu()
+            output_image = denormalize(fake_images[:4].cpu())
+
+            # Convert masks to 3-channel images for visualization
+            input_mask_3ch = input_mask.repeat(1, 3, 1, 1)
 
             # Log input images
-            img_grid_input = torchvision.utils.make_grid(denorm(real_images[:4]), nrow=4, normalize=True)
-            writer.add_image('Input/Real Images', img_grid_input, global_step)
+            writer.add_images('Input/Image', input_image, global_step)
 
-            # Log masks
-            masks_rgb = masks.repeat(1, 3, 1, 1)  # Convert single channel mask to 3 channels
-            img_grid_masks = torchvision.utils.make_grid(masks_rgb[:4], nrow=4, normalize=False)
-            writer.add_image('Input/Masks', img_grid_masks, global_step)
+            # Log input masks (segmented images)
+            writer.add_images('Input/Mask', input_mask_3ch, global_step)
 
-            # Log target colors
-            target_colors_images = target_colors[:, :, None, None].repeat(1, 1, real_images.size(2), real_images.size(3))
-            img_grid_target_colors = torchvision.utils.make_grid(denorm(target_colors_images[:4]), nrow=4, normalize=True)
-            writer.add_image('Input/Target Colors', img_grid_target_colors, global_step)
+            # Log output images
+            writer.add_images('Output/Image', output_image, global_step)
 
-            # Log generated images
-            img_grid_fake = torchvision.utils.make_grid(denorm(fake_images[:4]), nrow=4, normalize=True)
-            writer.add_image('Output/Generated Images', img_grid_fake, global_step)
-
-            # Optionally, log reconstructed images
-            img_grid_rec = torchvision.utils.make_grid(denorm(rec_images[:4]), nrow=4, normalize=True)
-            writer.add_image('Output/Reconstructed Images', img_grid_rec, global_step)
+            # Optionally, log target colors
+            B, _, H, W = real_images[:4].size()
+            target_color_map = target_colors[:4].view(-1, 3, 1, 1).expand(-1, -1, H, W)
+            target_color_image = denormalize(target_color_map.cpu())
+            writer.add_images('Input/Target Color', target_color_image, global_step)
 
     return loss_G.item(), loss_D.item()

@@ -1,3 +1,5 @@
+# main/wall_gan.py
+
 import os
 import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # Suppress INFO messages
@@ -41,6 +43,7 @@ def main():
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor(),
+        transforms.Normalize([0.5]*3, [0.5]*3)  # Normalize to [-1, 1]
     ])
 
     # Create datasets
@@ -58,7 +61,7 @@ def main():
     discriminator = Discriminator().to(device)
 
     # Loss functions
-    criterion_GAN = torch.nn.BCELoss()
+    criterion_GAN = torch.nn.BCEWithLogitsLoss()
     criterion_L1 = torch.nn.L1Loss()
 
     # Optimizers

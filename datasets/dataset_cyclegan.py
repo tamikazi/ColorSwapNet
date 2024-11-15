@@ -1,4 +1,4 @@
-# datasets/dataset_gan.py
+# datasets/dataset_cyclegan.py
 
 import os
 from PIL import Image
@@ -7,8 +7,8 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import numpy as np
 
-class GANDataset(Dataset):
-    def __init__(self, image_root, mask_root, transform=None, target_colors=None):
+class CycleGANDataset(Dataset):
+    def __init__(self, image_root, mask_root, transform=None):
         self.image_root = image_root
         self.mask_root = mask_root
 
@@ -30,8 +30,6 @@ class GANDataset(Dataset):
             transforms.ToTensor(),  # Converts to [0,1]
         ])
 
-        self.target_colors = target_colors  # List of target colors (list of RGB tuples in range [-1,1])
-
     def __len__(self):
         return len(self.image_paths)
 
@@ -44,26 +42,22 @@ class GANDataset(Dataset):
         image = Image.open(image_path).convert('RGB')
         image = self.transform(image)  # Shape: [3, H, W]
 
-        # Load mask (segmented image)
-        mask = Image.open(mask_path)
-
-        # Apply mask transformations
+        # Load mask
+        mask = Image.open(mask_path).convert('L')
         mask = self.mask_transform(mask)  # Shape: [1, H, W]
-        # Process the mask to be binary: walls as 1, others as 0
-        mask = (mask == 0).float()  # Adjust this based on your mask values
+        mask = (mask == 0).float()  # Adjust this based on your mask values (walls as 1, others as 0)
 
-        # Get target color
-        if self.target_colors:
-            target_color = self.target_colors[idx % len(self.target_colors)]
-            target_color = torch.tensor(target_color).float()  # Shape: [3]
-        else:
-            # Generate a random target color (RGB values between -1 and 1)
-            target_color = torch.rand(3) * 2 - 1  # Normalize to [-1, 1]
+        # Generate Domain B image by applying a random color to the walls
+        wall_color = torch.rand(3, 1, 1) * 2 - 1  # Random color in [-1, 1]
+        wall_color_map = wall_color.expand(-1, image.size(1), image.size(2))
+
+        # Create Domain B image
+        image_B = image * (1 - mask) + wall_color_map * mask
 
         sample = {
-            'image': image,
-            'segmented_image': mask,
-            'target_color': target_color,
+            'A': image,       # Original image (Domain A)
+            'B': image_B,     # Modified image with colored walls (Domain B)
+            'mask': mask,     # Mask for the walls
             'image_path': image_path
         }
 
