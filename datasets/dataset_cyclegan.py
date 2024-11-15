@@ -26,7 +26,7 @@ class CycleGANDataset(Dataset):
         ])
 
         self.mask_transform = transforms.Compose([
-            transforms.Resize((256, 256), interpolation=Image.NEAREST),
+            transforms.Resize((256, 256)),
             transforms.ToTensor(),  # Converts to [0,1]
         ])
 
@@ -43,9 +43,9 @@ class CycleGANDataset(Dataset):
         image = self.transform(image)  # Shape: [3, H, W]
 
         # Load mask
-        mask = Image.open(mask_path).convert('L')
+        mask = Image.open(mask_path)
         mask = self.mask_transform(mask)  # Shape: [1, H, W]
-        mask = (mask == 0).float()  # Adjust this based on your mask values (walls as 1, others as 0)
+        mask = (mask <= 0.01).float()  # Adjust this based on your mask values (walls as 1, others as 0)
 
         # Generate Domain B image by applying a random color to the walls
         wall_color = torch.rand(3, 1, 1) * 2 - 1  # Random color in [-1, 1]

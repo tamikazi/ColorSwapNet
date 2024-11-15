@@ -5,6 +5,9 @@ from torch.autograd import Variable
 import itertools
 from tqdm import tqdm
 
+def masked_L1_loss(input, target, mask):
+    return torch.mean(torch.abs(input - target) * mask)
+
 def train_one_epoch(
     G_AB, G_BA, D_A, D_B,
     optimizer_G, optimizer_D_A, optimizer_D_B,
@@ -19,6 +22,7 @@ def train_one_epoch(
     for i, batch in enumerate(tqdm(dataloader)):
         real_A = batch['A'].to(device)
         real_B = batch['B'].to(device)
+        mask = batch['mask'].to(device)
 
         # Adversarial ground truths
         valid = torch.ones((real_A.size(0), 1, 30, 30), requires_grad=False).to(device)
@@ -31,33 +35,34 @@ def train_one_epoch(
         optimizer_G.zero_grad()
 
         # Identity loss
+        # Identity loss
         if lambda_identity > 0:
             # G_AB(B) should be equal to B if real B is provided
-            idt_B = G_AB(real_B)
-            loss_idt_B = criterion_identity(idt_B, real_B) * lambda_cycle * lambda_identity
+            idt_B = G_AB(real_B, mask)
+            loss_idt_B = masked_L1_loss(idt_B, real_B, mask) * lambda_cycle * lambda_identity
 
             # G_BA(A) should be equal to A if real A is provided
-            idt_A = G_BA(real_A)
-            loss_idt_A = criterion_identity(idt_A, real_A) * lambda_cycle * lambda_identity
+            idt_A = G_BA(real_A, mask)
+            loss_idt_A = masked_L1_loss(idt_A, real_A, mask) * lambda_cycle * lambda_identity
         else:
             loss_idt_B = 0
             loss_idt_A = 0
 
         # GAN loss
-        fake_B = G_AB(real_A)
+        fake_B = G_AB(real_A, mask)
         pred_fake_B = D_B(fake_B)
         loss_GAN_AB = criterion_GAN(pred_fake_B, valid)
 
-        fake_A = G_BA(real_B)
+        fake_A = G_BA(real_B, mask)
         pred_fake_A = D_A(fake_A)
         loss_GAN_BA = criterion_GAN(pred_fake_A, valid)
 
         # Cycle loss
-        recovered_A = G_BA(fake_B)
-        loss_cycle_A = criterion_cycle(recovered_A, real_A) * lambda_cycle
+        recovered_A = G_BA(fake_B, mask)
+        loss_cycle_A = masked_L1_loss(recovered_A, real_A, mask) * lambda_cycle
 
-        recovered_B = G_AB(fake_A)
-        loss_cycle_B = criterion_cycle(recovered_B, real_B) * lambda_cycle
+        recovered_B = G_AB(fake_A, mask)
+        loss_cycle_B = masked_L1_loss(recovered_B, real_B, mask) * lambda_cycle
 
         # Total generator loss
         loss_G = loss_GAN_AB + loss_GAN_BA + loss_cycle_A + loss_cycle_B + loss_idt_A + loss_idt_B

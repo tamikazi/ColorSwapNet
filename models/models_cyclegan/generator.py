@@ -23,9 +23,13 @@ class ResnetBlock(nn.Module):
 class ResnetGenerator(nn.Module):
     def __init__(self, input_nc=3, output_nc=3, ngf=64, n_blocks=9):
         super(ResnetGenerator, self).__init__()
+
+        self.input_nc = input_nc
+        self.output_nc = output_nc
+
         model = [
             nn.ReflectionPad2d(3),
-            nn.Conv2d(input_nc, ngf, kernel_size=7),
+            nn.Conv2d(input_nc + 1, ngf, kernel_size=7),
             nn.InstanceNorm2d(ngf),
             nn.ReLU(inplace=True)
         ]
@@ -64,5 +68,9 @@ class ResnetGenerator(nn.Module):
 
         self.model = nn.Sequential(*model)
 
-    def forward(self, x):
-        return self.model(x)
+    def forward(self, x, mask):
+        x = torch.cat((x, mask), dim=1)
+        output = self.model(x)
+
+        output = x[:, :3, :, :] * (1 - mask) + output * mask
+        return output

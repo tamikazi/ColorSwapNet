@@ -46,7 +46,7 @@ def main():
     dataset = CycleGANDataset(IMAGE_ROOT, MASK_ROOT, transform=transform)
 
     # Create data loader
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
 
     # Initialize models
     G_AB = ResnetGenerator().to(device)
