@@ -50,11 +50,11 @@ def train_one_epoch(
 
         # GAN loss
         fake_B = G_AB(real_A, mask)
-        pred_fake_B = D_B(fake_B)
+        pred_fake_B = D_B(fake_B, mask)
         loss_GAN_AB = criterion_GAN(pred_fake_B, valid)
 
         fake_A = G_BA(real_B, mask)
-        pred_fake_A = D_A(fake_A)
+        pred_fake_A = D_A(fake_A, mask)
         loss_GAN_BA = criterion_GAN(pred_fake_A, valid)
 
         # Cycle loss
@@ -77,11 +77,11 @@ def train_one_epoch(
         optimizer_D_A.zero_grad()
 
         # Real loss
-        pred_real_A = D_A(real_A)
+        pred_real_A = D_A(real_A, mask)
         loss_D_real_A = criterion_GAN(pred_real_A, valid)
 
         # Fake loss
-        pred_fake_A = D_A(fake_A.detach())
+        pred_fake_A = D_A(fake_A.detach(), mask)
         loss_D_fake_A = criterion_GAN(pred_fake_A, fake)
 
         # Total loss
@@ -97,11 +97,11 @@ def train_one_epoch(
         optimizer_D_B.zero_grad()
 
         # Real loss
-        pred_real_B = D_B(real_B)
+        pred_real_B = D_B(real_B, mask)
         loss_D_real_B = criterion_GAN(pred_real_B, valid)
 
         # Fake loss
-        pred_fake_B = D_B(fake_B.detach())
+        pred_fake_B = D_B(fake_B.detach(), mask)
         loss_D_fake_B = criterion_GAN(pred_fake_B, fake)
 
         # Total loss
