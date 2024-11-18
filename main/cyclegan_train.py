@@ -26,6 +26,7 @@ def main():
     MASK_ROOT = ROOT_DATASET + "/annotations/training"
 
     # Create output directories if they don't exist
+    checkpoint_dir = 'checkpoints'
     os.makedirs('checkpoints', exist_ok=True)
     os.makedirs('output_images', exist_ok=True)
 
@@ -66,6 +67,26 @@ def main():
     optimizer_D_A = torch.optim.Adam(D_A.parameters(), lr=learning_rate, betas=(0.5, 0.999))
     optimizer_D_B = torch.optim.Adam(D_B.parameters(), lr=learning_rate, betas=(0.5, 0.999))
 
+    # Initialize or load checkpoint
+    start_epoch = 1  # Default start epoch
+
+    # Check if a checkpoint exists
+    checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
+    if os.path.isfile(checkpoint_path):
+        print(f"Loading checkpoint '{checkpoint_path}'")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        G_AB.load_state_dict(checkpoint['G_AB_state_dict'])
+        G_BA.load_state_dict(checkpoint['G_BA_state_dict'])
+        D_A.load_state_dict(checkpoint['D_A_state_dict'])
+        D_B.load_state_dict(checkpoint['D_B_state_dict'])
+        optimizer_G.load_state_dict(checkpoint['optimizer_G_state_dict'])
+        optimizer_D_A.load_state_dict(checkpoint['optimizer_D_A_state_dict'])
+        optimizer_D_B.load_state_dict(checkpoint['optimizer_D_B_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        print(f"Resuming training from epoch {start_epoch}")
+    else:
+        print("No checkpoint found. Starting training from scratch.")
+
     # Initialize TensorBoard writer
     writer = SummaryWriter(log_dir='runs/cyclegan_training')
 
@@ -79,11 +100,21 @@ def main():
             dataloader, epoch, device, writer
         )
 
-        # Save models
-        torch.save(G_AB.state_dict(), f'checkpoints/G_AB_epoch_{epoch}.pth')
-        torch.save(G_BA.state_dict(), f'checkpoints/G_BA_epoch_{epoch}.pth')
-        torch.save(D_A.state_dict(), f'checkpoints/D_A_epoch_{epoch}.pth')
-        torch.save(D_B.state_dict(), f'checkpoints/D_B_epoch_{epoch}.pth')
+        # Save models and optimizer states
+        checkpoint = {
+            'epoch': epoch,
+            'G_AB_state_dict': G_AB.state_dict(),
+            'G_BA_state_dict': G_BA.state_dict(),
+            'D_A_state_dict': D_A.state_dict(),
+            'D_B_state_dict': D_B.state_dict(),
+            'optimizer_G_state_dict': optimizer_G.state_dict(),
+            'optimizer_D_A_state_dict': optimizer_D_A.state_dict(),
+            'optimizer_D_B_state_dict': optimizer_D_B.state_dict(),
+        }
+        torch.save(checkpoint, os.path.join(checkpoint_dir, 'latest_checkpoint.pth'))
+
+        # Optionally, save a checkpoint with the epoch number
+        torch.save(checkpoint, os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth'))
 
     # Close the writer
     writer.close()
