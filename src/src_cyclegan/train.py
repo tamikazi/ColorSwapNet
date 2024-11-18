@@ -129,12 +129,14 @@ def train_one_epoch(
             recovered_A_img = denormalize(recovered_A[:4].cpu())
             recovered_B_img = denormalize(recovered_B[:4].cpu())
 
-            writer.add_images('A/real', real_A_img, global_step)
-            writer.add_images('A/fake', fake_A_img, global_step)
-            writer.add_images('A/recovered', recovered_A_img, global_step)
+            epoch_tag = f'Epoch_{epoch}'
 
-            writer.add_images('B/real', real_B_img, global_step)
-            writer.add_images('B/fake', fake_B_img, global_step)
-            writer.add_images('B/recovered', recovered_B_img, global_step)
+            writer.add_images(f'{epoch_tag}A/real', real_A_img, global_step)
+            writer.add_images(f'{epoch_tag}A/fake', fake_A_img, global_step)
+            writer.add_images(f'{epoch_tag}A/recovered', recovered_A_img, global_step)
+
+            writer.add_images(f'{epoch_tag}B/real', real_B_img, global_step)
+            writer.add_images(f'{epoch_tag}B/fake', fake_B_img, global_step)
+            writer.add_images(f'{epoch_tag}B/recovered', recovered_B_img, global_step)
 
     return loss_G.item(), loss_D_A.item(), loss_D_B.item()
