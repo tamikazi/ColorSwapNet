@@ -5,6 +5,9 @@ from torch.autograd import Variable
 import itertools
 from tqdm import tqdm
 
+import os
+from torchvision.utils import save_image
+
 def masked_L1_loss(input, target, mask):
     return torch.mean(torch.abs(input - target) * mask)
 
@@ -117,7 +120,7 @@ def train_one_epoch(
         writer.add_scalar('Loss/D_B', loss_D_B.item(), global_step)
 
         # Log images to TensorBoard every N batches
-        if i % 100 == 0:
+        if i % 200 == 0:
             # Prepare images for logging
             def denormalize(tensor):
                 return (tensor + 1) / 2
@@ -138,5 +141,17 @@ def train_one_epoch(
             writer.add_images(f'{epoch_tag}B/real', real_B_img, global_step)
             writer.add_images(f'{epoch_tag}B/fake', fake_B_img, global_step)
             writer.add_images(f'{epoch_tag}B/recovered', recovered_B_img, global_step)
+
+            # Save images to a folder
+            save_images_folder = os.path.join('saved_images', f'epoch_{epoch}')
+            os.makedirs(save_images_folder, exist_ok=True)
+
+            # Save images with batch number in filenames
+            save_image(real_A_img, os.path.join(save_images_folder, f'real_A_epoch_{epoch}_batch_{i}.png'))
+            save_image(real_B_img, os.path.join(save_images_folder, f'real_B_epoch_{epoch}_batch_{i}.png'))
+            save_image(fake_B_img, os.path.join(save_images_folder, f'fake_B_epoch_{epoch}_batch_{i}.png'))
+            save_image(fake_A_img, os.path.join(save_images_folder, f'fake_A_epoch_{epoch}_batch_{i}.png'))
+            save_image(recovered_A_img, os.path.join(save_images_folder, f'recovered_A_epoch_{epoch}_batch_{i}.png'))
+            save_image(recovered_B_img, os.path.join(save_images_folder, f'recovered_B_epoch_{epoch}_batch_{i}.png'))
 
     return loss_G.item(), loss_D_A.item(), loss_D_B.item()
