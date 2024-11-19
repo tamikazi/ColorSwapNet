@@ -2,8 +2,8 @@ import numpy as np
 import torch
 
 # ROOT_DATASET = "/home/shaakira.gadiwan/project/data/ADEChallengeData2016"
-ROOT_DATASET = "C:/Users/tahmi/Documents/MENG2023/ENEL645/ADEChallengeData2016_processed/ADEChallengeData2016"
-# ROOT_DATASET = "/home/tahmid.kazi/project_data/ADEChallengeData2016"
+# ROOT_DATASET = "C:/Users/tahmi/Documents/MENG2023/ENEL645/ADEChallengeData2016_processed/ADEChallengeData2016"
+ROOT_DATASET = "/home/tahmid.kazi/project_data/ADEChallengeData2016"
 
 # CKPT_DIR_PATH_SEG = "/home/shaakira.gadiwan/project/best_models"
 # CKPT_DIR_PATH_SEG = "C:/Users/tahmi/Documents/MENG2023/ENEL645/models"

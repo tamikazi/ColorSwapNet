@@ -14,9 +14,8 @@ def masked_L1_loss(input, target, mask):
 def train_one_epoch(
     G_AB, G_BA, D_A, D_B,
     optimizer_G, optimizer_D_A, optimizer_D_B,
-    criterion_GAN, criterion_cycle, criterion_identity,
-    dataloader, epoch, device, writer, lambda_cycle=10.0, lambda_identity=5.0
-):
+    criterion_GAN, dataloader, epoch, device, writer, lambda_cycle=10.0, lambda_identity=5.0):
+    
     G_AB.train()
     G_BA.train()
     D_A.train()
@@ -120,7 +119,7 @@ def train_one_epoch(
         writer.add_scalar('Loss/D_B', loss_D_B.item(), global_step)
 
         # Log images to TensorBoard every N batches
-        if i % 200 == 0:
+        if i % 300 == 0:
             # Prepare images for logging
             def denormalize(tensor):
                 return (tensor + 1) / 2

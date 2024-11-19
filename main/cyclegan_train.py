@@ -31,8 +31,8 @@ def main():
     os.makedirs('output_images', exist_ok=True)
 
     # Hyperparameters
-    batch_size = 1
-    num_epochs = 100
+    batch_size = 4
+    num_epochs = 200
     learning_rate = 0.0002
     device = DEVICE
 
@@ -47,7 +47,7 @@ def main():
     dataset = CycleGANDataset(IMAGE_ROOT, MASK_ROOT, transform=transform)
 
     # Create data loader
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
 
     # Initialize models
     G_AB = ResnetGenerator().to(device)
@@ -57,8 +57,6 @@ def main():
 
     # Loss functions
     criterion_GAN = torch.nn.MSELoss()
-    criterion_cycle = torch.nn.L1Loss()
-    criterion_identity = torch.nn.L1Loss()
 
     # Optimizers
     optimizer_G = torch.optim.Adam(
@@ -91,13 +89,12 @@ def main():
     writer = SummaryWriter(log_dir='runs/cyclegan_training')
 
     # Training loop
-    for epoch in range(1, num_epochs + 1):
+    for epoch in range(start_epoch, num_epochs + 1):
         print(f"Epoch {epoch}/{num_epochs}")
         loss_G, loss_D_A, loss_D_B = train_one_epoch(
             G_AB, G_BA, D_A, D_B,
             optimizer_G, optimizer_D_A, optimizer_D_B,
-            criterion_GAN, criterion_cycle, criterion_identity,
-            dataloader, epoch, device, writer
+            criterion_GAN, dataloader, epoch, device, writer
         )
 
         # Save models and optimizer states
