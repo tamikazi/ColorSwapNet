@@ -10,7 +10,7 @@ class NLayerDiscriminator(nn.Module):
         self.input_nc = input_nc
 
         sequence = [
-            nn.Conv2d(input_nc + 1, ndf, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(input_nc, ndf, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True)
         ]
 
@@ -40,6 +40,5 @@ class NLayerDiscriminator(nn.Module):
         sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=4, stride=1, padding=1)]
         self.model = nn.Sequential(*sequence)
 
-    def forward(self, x, mask):
-        x = torch.cat([x, mask], dim=1)
+    def forward(self, x):
         return self.model(x)
