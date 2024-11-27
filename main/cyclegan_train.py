@@ -18,6 +18,8 @@ from src.src_cyclegan.train import train_one_epoch
 from utils.constants import ROOT_DATASET, DEVICE, NUM_WORKERS
 
 import itertools
+from torch.optim.lr_scheduler import LambdaLR
+
 
 
 def main():
@@ -31,10 +33,16 @@ def main():
     os.makedirs('output_images', exist_ok=True)
 
     # Hyperparameters
-    batch_size = 4
+    batch_size = 1
     num_epochs = 200
-    learning_rate = 0.0002
+    learning_rate = 0.00001
     device = DEVICE
+
+    start_epoch = 1  # Default start epoch
+
+    def lambda_rule(epoch):
+        lr_l = 1.0 - max(0, epoch + start_epoch - num_epochs//2) / float(num_epochs//2 + 1)
+        return lr_l
 
     # Transformations
     transform = transforms.Compose([
@@ -61,12 +69,12 @@ def main():
     # Optimizers
     optimizer_G = torch.optim.Adam(
         itertools.chain(G_AB.parameters(), G_BA.parameters()),
-        lr=learning_rate, betas=(0.5, 0.999))
-    optimizer_D_A = torch.optim.Adam(D_A.parameters(), lr=learning_rate, betas=(0.5, 0.999))
-    optimizer_D_B = torch.optim.Adam(D_B.parameters(), lr=learning_rate, betas=(0.5, 0.999))
+        lr=learning_rate * 2, betas=(0.5, 0.999))
+    optimizer_D_A = torch.optim.Adam(D_A.parameters(), lr=learning_rate * 0.1, betas=(0.5, 0.999))
+    optimizer_D_B = torch.optim.Adam(D_B.parameters(), lr=learning_rate * 0.1, betas=(0.5, 0.999))
 
     # Initialize or load checkpoint
-    start_epoch = 1  # Default start epoch
+
 
     # Check if a checkpoint exists
     checkpoint_path = os.path.join(checkpoint_dir, 'latest_checkpoint.pth')
@@ -112,6 +120,11 @@ def main():
 
         # Optionally, save a checkpoint with the epoch number
         torch.save(checkpoint, os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth'))
+
+        # Update learning rates
+        lr_scheduler_G.step()
+        lr_scheduler_D_A.step()
+        lr_scheduler_D_B.step()
 
     # Close the writer
     writer.close()

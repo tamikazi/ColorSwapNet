@@ -45,7 +45,7 @@ class CycleGANDataset(Dataset):
         # Load mask
         mask = Image.open(mask_path)
         mask = self.mask_transform(mask)  # Shape: [1, H, W]
-        mask = (mask <= 0.01).float()  # Adjust this based on your mask values (walls as 1, others as 0)
+        mask = (mask <= 0.005).float()  # Adjust this based on your mask values (walls as 1, others as 0)
 
         # Generate Domain B image by applying a random color to the walls
         wall_color = torch.rand(3, 1, 1) * 2 - 1  # Random color in [-1, 1]

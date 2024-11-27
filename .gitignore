@@ -11,3 +11,4 @@
 /main/checkpoints
 /main/output_images
 /main/runs
+**/saved_images

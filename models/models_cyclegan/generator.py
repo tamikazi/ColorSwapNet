@@ -29,7 +29,7 @@ class ResnetGenerator(nn.Module):
 
         model = [
             nn.ReflectionPad2d(3),
-            nn.Conv2d(input_nc + 1, ngf, kernel_size=7),
+            nn.Conv2d(input_nc, ngf, kernel_size=7),
             nn.InstanceNorm2d(ngf),
             nn.ReLU(inplace=True)
         ]
@@ -69,7 +69,7 @@ class ResnetGenerator(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x, mask):
-        x = torch.cat((x, mask), dim=1)
+        # x = torch.cat((x, mask), dim=1)
         output = self.model(x)
 
         output = x[:, :3, :, :] * (1 - mask) + output * mask
