@@ -45,20 +45,15 @@ class CycleGANDataset(Dataset):
         # Load mask
         mask = Image.open(mask_path)
         mask = self.mask_transform(mask)  # Shape: [1, H, W]
-        mask = (mask <= 0.005).float()  # Adjust this based on your mask values (walls as 1, others as 0)
+        mask = (mask < 0.005).float()  # Adjust threshold as needed
 
-        # Generate Domain B image by applying a random color to the walls
-        wall_color = torch.rand(3, 1, 1) * 2 - 1  # Random color in [-1, 1]
-        wall_color_map = wall_color.expand(-1, image.size(1), image.size(2))
-
-        # Create Domain B image
-        image_B = image * (1 - mask) + wall_color_map * mask
+        # Generate a random target color in [-1, 1]
+        target_color = torch.rand(3) * 2 - 1  # Shape: [3]
 
         sample = {
-            'A': image,       # Original image (Domain A)
-            'B': image_B,     # Modified image with colored walls (Domain B)
-            'mask': mask,     # Mask for the walls
-            'image_path': image_path
+            'image': image,            # Original image
+            'mask': mask,              # Wall mask
+            'target_color': target_color  # Random target color
         }
 
         return sample
