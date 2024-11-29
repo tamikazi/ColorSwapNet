@@ -30,7 +30,7 @@ def train_one_epoch(
     optimizer_G, optimizer_D,
     criterion_GAN, criterion_reconstruction, perceptual_loss,
     dataloader, epoch, device, writer,
-    lambda_perceptual=10.0, lambda_reconstruction=15.0
+    lambda_perceptual=10.0, lambda_reconstruction=10.0
 ):
     generator.train()
     discriminator.train()
@@ -128,3 +128,90 @@ def save_sample_images(input_image, fake_image, wall_mask, target_color, epoch, 
     save_image(fake_image, os.path.join(save_images_folder, f'generated_epoch_{epoch}_batch_{batch_idx}.png'))
     save_image(wall_mask_vis, os.path.join(save_images_folder, f'mask_epoch_{epoch}_batch_{batch_idx}.png'))
     save_image(target_color_images, os.path.join(save_images_folder, f'target_color_epoch_{epoch}_batch_{batch_idx}.png'))
+
+def validate(generator, discriminator, criterion_reconstruction, perceptual_loss, dataloader_val, device, lambda_reconstruction=10.0, lambda_perceptual=10.0):
+    """
+    Runs validation on the validation dataset and computes average metrics.
+    """
+    generator.eval()
+    discriminator.eval()
+    
+    total_loss_G = 0.0
+    total_loss_D = 0.0
+    total_loss_G_GAN = 0.0
+    total_loss_reconstruction = 0.0
+    total_loss_perceptual = 0.0
+    total_ssim = 0.0
+    total_fid = 0.0  # Placeholder if FID is computed
+    
+    with torch.no_grad():
+        for batch in tqdm(dataloader_val, desc='Validation'):
+            input_image = batch['image'].to(device)         # (B, 3, H, W)
+            wall_mask = batch['mask'].to(device)            # (B, 1, H, W)
+            target_color = batch['target_color'].to(device) # (B, 3)
+    
+            batch_size, _, height, width = input_image.size()
+    
+            # Generator forward pass
+            fake_image = generator(input_image, wall_mask, target_color)
+    
+            # Prepare target color map for loss calculation
+            target_color_map = target_color.view(batch_size, 3, 1, 1).expand(batch_size, 3, height, width)
+    
+            ## Discriminator Forward Pass ##
+            # Real images
+            pred_real = discriminator(input_image, input_image, wall_mask)
+            loss_D_real = criterion_GAN(pred_real, torch.ones_like(pred_real).to(device) * 0.9)  # Label smoothing
+    
+            # Fake images
+            pred_fake = discriminator(input_image, fake_image, wall_mask)
+            loss_D_fake = criterion_GAN(pred_fake, torch.zeros_like(pred_fake).to(device) + 0.1)  # Label smoothing
+    
+            # Total discriminator loss
+            loss_D = (loss_D_real + loss_D_fake) * 0.5
+            total_loss_D += loss_D.item()
+    
+            ## Generator Forward Pass ##
+            # Adversarial loss
+            pred_fake_for_G = discriminator(input_image, fake_image, wall_mask)
+            loss_G_GAN = criterion_GAN(pred_fake_for_G, torch.ones_like(pred_fake_for_G).to(device))
+    
+            # Perceptual loss (compare generated wall regions with original wall regions)
+            loss_perceptual = perceptual_loss(fake_image * wall_mask, input_image * wall_mask)
+    
+            # Reconstruction loss (compare generated wall regions with target color map)
+            loss_reconstruction = criterion_reconstruction(
+                fake_image * wall_mask, target_color_map * wall_mask)
+    
+            # Total generator loss
+            loss_G = loss_G_GAN + lambda_perceptual * loss_perceptual + lambda_reconstruction * loss_reconstruction
+            total_loss_G += loss_G.item()
+            total_loss_G_GAN += loss_G_GAN.item()
+            total_loss_reconstruction += loss_reconstruction.item()
+            total_loss_perceptual += loss_perceptual.item()
+    
+            # Compute SSIM (optional)
+            ssim_val = compute_ssim(fake_image, input_image, wall_mask)  # Define compute_ssim function
+            total_ssim += ssim_val
+    
+            # Compute FID (optional)
+            # fid_val = compute_fid(fake_image, input_image)  # Define compute_fid function if needed
+            # total_fid += fid_val
+    
+    avg_loss_G = total_loss_G / len(dataloader_val)
+    avg_loss_D = total_loss_D / len(dataloader_val)
+    avg_loss_G_GAN = total_loss_G_GAN / len(dataloader_val)
+    avg_loss_reconstruction = total_loss_reconstruction / len(dataloader_val)
+    avg_loss_perceptual = total_loss_perceptual / len(dataloader_val)
+    avg_ssim = total_ssim / len(dataloader_val)
+    # avg_fid = total_fid / len(dataloader_val)  # Uncomment if FID is computed
+    
+    return {
+        'avg_loss_G': avg_loss_G,
+        'avg_loss_D': avg_loss_D,
+        'avg_loss_G_GAN': avg_loss_G_GAN,
+        'avg_loss_reconstruction': avg_loss_reconstruction,
+        'avg_loss_perceptual': avg_loss_perceptual,
+        'avg_ssim': avg_ssim,
+        # 'avg_fid': avg_fid
+    }
