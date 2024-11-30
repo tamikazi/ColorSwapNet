@@ -7,6 +7,7 @@ import numpy as np
 import PIL
 from PIL import Image
 import matplotlib.pyplot as plt
+from scipy.spatial.distance import directed_hausdorff
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -217,3 +218,98 @@ def visualize_wall(img, pred, class_to_display=0):
 
 def not_None_collate(x):
     return x
+
+def plot_metrics(metrics, num_epochs):
+    epochs = range(1, num_epochs + 1)
+    
+    # Plot training metrics
+    plt.figure(figsize=(12, 8))
+    plt.plot(epochs, metrics['train_loss'], label='Train Loss')
+    plt.plot(epochs, metrics['train_pixel_acc'], label='Train Pixel Accuracy')
+    plt.plot(epochs, metrics['train_jaccard'], label='Train Jaccard (IoU)')
+    plt.plot(epochs, metrics['train_dice'], label='Train Dice')
+    plt.xlabel('Epochs')
+    plt.ylabel('Training Metrics')
+    plt.title('Training Metrics Over Epochs')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    # Plot validation metrics
+    plt.figure(figsize=(12, 8))
+    plt.plot(epochs, metrics['val_pixel_acc'], label='Validation Pixel Accuracy')
+    plt.plot(epochs, metrics['val_jaccard'], label='Validation Jaccard (IoU)')
+    plt.plot(epochs, metrics['val_boundary_IOU'], label='Validation Boundary IoU')
+    plt.plot(epochs, metrics['val_hausdorff'], label='Validation Hausdorff')
+    plt.xlabel('Epochs')
+    plt.ylabel('Validation Metrics')
+    plt.title('Validation Metrics Over Epochs')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+def calculate_boundary_iou(pred, gt, dilation=1):
+    """
+    Compute Boundary IoU by dilating the boundaries of predictions and ground truth and calculating their IoU.
+    """
+    from skimage.morphology import binary_dilation
+
+    pred_boundary = binary_dilation(pred, np.ones((dilation, dilation))) - pred
+    gt_boundary = binary_dilation(gt, np.ones((dilation, dilation))) - gt
+
+    intersection = np.logical_and(pred_boundary, gt_boundary).sum()
+    union = np.logical_or(pred_boundary, gt_boundary).sum()
+    
+    return intersection / union if union > 0 else 0
+
+def calculate_hausdorff_distance(pred, gt):
+    """
+    Compute the Hausdorff Distance between the boundaries of prediction and ground truth.
+    """
+    pred_points = np.argwhere(pred > 0)
+    gt_points = np.argwhere(gt > 0)
+
+    forward_hausdorff = directed_hausdorff(pred_points, gt_points)[0]
+    backward_hausdorff = directed_hausdorff(gt_points, pred_points)[0]
+
+    return max(forward_hausdorff, backward_hausdorff)
+
+def compute_jaccard(pred, target):
+    """
+    Compute Jaccard Index (IoU).
+    - pred: Predicted logits or probabilities, shape (batch_size, num_classes, height, width) or binary mask (batch_size, height, width).
+    - target: Ground truth binary mask, shape (batch_size, height, width).
+    """
+    # Ensure pred is converted to a binary mask (batch_size, height, width)
+    if pred.ndim == 4:  # If logits or probabilities
+        pred = torch.argmax(pred, dim=1)  # Convert to class predictions
+
+    # Ensure shapes match
+    assert pred.shape == target.shape, f"Shape mismatch: pred {pred.shape}, target {target.shape}"
+
+    # Compute intersection and union
+    intersection = (pred * target).sum(dim=(1, 2))  # Sum over spatial dimensions
+    union = pred.sum(dim=(1, 2)) + target.sum(dim=(1, 2)) - intersection  # Union calculation
+
+    # Avoid division by zero
+    jaccard = intersection / (union + 1e-6)
+    return jaccard.mean()  # Return the mean Jaccard Index across the batch
+
+
+def compute_dice(pred, target):
+    """
+    Compute Dice coefficient.
+    - pred: Predicted tensor (logits or probabilities), shape (batch_size, num_classes, height, width).
+    - target: Ground truth tensor, shape (batch_size, height, width).
+    """
+    # Ensure pred is reduced to binary mask
+    if pred.ndim == 4:  # Logits or probabilities
+        pred = torch.argmax(pred, dim=1)  # Shape: (batch_size, height, width)
+    
+    # Ensure target has same shape
+    assert pred.shape == target.shape, "Shape mismatch between pred and target"
+    
+    # Calculate intersection and union
+    intersection = (pred * target).sum(dim=(1, 2))  # Batch-wise intersection
+    dice = (2 * intersection) / (pred.sum(dim=(1, 2)) + target.sum(dim=(1, 2)) + 1e-6)
+    return dice
