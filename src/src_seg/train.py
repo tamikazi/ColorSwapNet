@@ -7,8 +7,10 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from utils.constants import TOTAL_NUM_ITER_SEG, NUM_ITER_PER_EPOCH_SEG, OPTIMIZER_PARAMETERS_SEG, DEVICE
-from utils.utils import pixel_acc
+from utils.utils import pixel_acc, compute_dice, compute_jaccard
 
+
+import matplotlib.pyplot as plt
 
 def train_one_epoch(segmentation_module, iterator, optimizers, epoch, crit, writer):
     """
@@ -16,13 +18,18 @@ def train_one_epoch(segmentation_module, iterator, optimizers, epoch, crit, writ
     """
 
     segmentation_module.train()
+    running_loss = 0.0
+    running_pixel_acc = 0.0
+    running_jaccard = 0.0
+    running_dice = 0.0
+    num_batches = 0
 
     for i in tqdm(range(NUM_ITER_PER_EPOCH_SEG)):
         # load a batch of data
         batch_data = next(iterator)[0]  # Because the batch size in the dataloader is 1, but the batch is created in TrainDataset
-        segmentation_module.zero_grad() 
+        segmentation_module.zero_grad()
         
-        # adjust learning rate (learning rate "poly")  #TODO change to learning rate scheduler
+        # adjust learning rate (learning rate "poly")  # TODO change to learning rate scheduler
         curr_iter = i + (epoch - 1) * NUM_ITER_PER_EPOCH_SEG
         lr_encoder, _ = adjust_learning_rate(optimizers, curr_iter)
                 
@@ -32,20 +39,52 @@ def train_one_epoch(segmentation_module, iterator, optimizers, epoch, crit, writ
         # Calculate loss and accuracy
         loss = crit(pred, batch_data['seg_label'].to(DEVICE))
         acc = pixel_acc(pred, batch_data['seg_label'].to(DEVICE))
+        jaccard = compute_jaccard(pred, batch_data['seg_label'].to(DEVICE))
+        dice = compute_dice(pred, batch_data['seg_label'].to(DEVICE))
                
         loss = loss.mean()
         acc = acc.mean()
+        jaccard = jaccard.mean()
+        dice = dice.mean()
+
+        # Update running metrics
+        running_loss += loss.item()
+        running_pixel_acc += acc.item()
+        running_jaccard += jaccard.item()
+        running_dice += dice.item()
+        num_batches += 1
 
         # Backward pass
         loss.backward()
         for optimizer in optimizers:
             optimizer.step()
 
-        # update average loss and acc
-        writer.add_scalar('Learning rate', lr_encoder, (epoch - 1) * NUM_ITER_PER_EPOCH_SEG + i)
-        writer.add_scalar('Training loss', loss.data.item(), (epoch - 1) * NUM_ITER_PER_EPOCH_SEG + i)
-        writer.add_scalar('Training accuracy', acc.data.item(), (epoch - 1) * NUM_ITER_PER_EPOCH_SEG + i)
+        # Log metrics for each batch
+        writer.add_scalar('Learning rate', lr_encoder, curr_iter)
+        writer.add_scalar('Batch Loss', loss.data.item(), curr_iter)
+        writer.add_scalar('Batch Pixel Accuracy', acc.data.item(), curr_iter)
+        writer.add_scalar('Batch Jaccard', jaccard.data.item(), curr_iter)
+        writer.add_scalar('Batch Dice', dice.data.item(), curr_iter)
 
+    # Calculate averages
+    epoch_loss = running_loss / num_batches
+    epoch_pixel_acc = running_pixel_acc / num_batches
+    epoch_jaccard = running_jaccard / num_batches
+    epoch_dice = running_dice / num_batches
+
+    print(f"Epoch {epoch}:")
+    print(f"  Loss: {epoch_loss:.4f}")
+    print(f"  Pixel Accuracy: {epoch_pixel_acc:.4f}")
+    print(f"  Jaccard (IoU): {epoch_jaccard:.4f}")
+    print(f"  Dice Coefficient: {epoch_dice:.4f}")
+
+    # Log epoch metrics
+    writer.add_scalar('Epoch Loss', epoch_loss, epoch)
+    writer.add_scalar('Epoch Pixel Accuracy', epoch_pixel_acc, epoch)
+    writer.add_scalar('Epoch Jaccard', epoch_jaccard, epoch)
+    writer.add_scalar('Epoch Dice', epoch_dice, epoch)
+
+    return epoch_loss, epoch_pixel_acc, epoch_jaccard, epoch_dice
 
 def checkpoint(nets, epoch, checkpoint_dir_path, is_best_epoch): 
     """
