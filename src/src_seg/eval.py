@@ -95,7 +95,7 @@ def segment_image(segmentation_module, img, disp_image=True):
     ])
 
     if isinstance(img, str):
-        img = Image.open(img)
+        img = Image.open(img).convert('RGB')
     
     img_original = np.array(img)
     img_data = pil_to_tensor(img)
