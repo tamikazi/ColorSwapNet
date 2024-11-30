@@ -109,7 +109,7 @@ def main():
     writer = SummaryWriter(os.path.join(CKPT_DIR_PATH_SEG, 'tensorboard'))
     writer.close()
 
-    last_epoch = 20
+    last_epoch = 0
 
     # Initialize lists to store metrics
     metrics = {
