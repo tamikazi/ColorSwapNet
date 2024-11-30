@@ -50,7 +50,7 @@ def main():
     overlay_image[thick_edges > 0] = [255, 0, 0]  # Draw red boundaries
 
     # Save the overlayed image for verification
-    cv2.imwrite('overlayed_boundaries_fixed.png', cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR))
+    cv2.imwrite('overlayed_boundaries.png', cv2.cvtColor(overlay_image, cv2.COLOR_RGB2BGR))
 
 
 if __name__ == '__main__':
