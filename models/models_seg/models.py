@@ -37,7 +37,7 @@ def build_encoder(path_encoder_weights="", encoder_model="resnet101-dilated"):
     elif encoder_model.startswith("resnet50"):
         orig_resnet = resnet50(pretraind=not pretrained)
     elif encoder_model.startswith("resnet101"):
-        orig_resnet = resnet101(pretrained=False)#not pretrained)
+        orig_resnet = resnet101(pretrained=not pretrained)
     else:
         assert(f"Encoder model {encoder_model} is not implemented!")
 
