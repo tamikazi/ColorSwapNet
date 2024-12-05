@@ -74,8 +74,10 @@ cyclegan-wall-colorization/
 │   └── src_seg/
 │       ├── eval.py                  # Evaluation script for Segmentation
 │       └── train.py                 # Training script for Segmentation
-├── scripts/
-│   └── preprocess_data.py           # Data preprocessing script
+├── main/
+│   └── process_data.py              # Data preprocessing script
+│   └── cyclegan_train.py            # Main training for CycleGAN
+│   └── wall_seg.py                  # Main training for Segmentation
 ├── utils/
 │   ├── constants.py                 # Constant definitions
 │   └── utils.py                     # General utility functions
