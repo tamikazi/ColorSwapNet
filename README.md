@@ -14,7 +14,7 @@
 
 The **CycleGAN Wall Colorization Project** leverages the power of CycleGAN and advanced image segmentation techniques to automatically change the color of walls in images. By accurately identifying wall regions through segmentation masks, the system enables realistic and seamless color transformations, making it an invaluable tool for interior design, virtual staging, and creative applications.
 
-![Before and After](results\GAN_images\input_epoch_101_batch_200.png)
+![Before and After](https://github.com/tamikazi/ColorSwapNet/blob/main/results/GAN_images/input_epoch_101_batch_200.png)
 
 ## Features
 
