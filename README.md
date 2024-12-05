@@ -31,6 +31,16 @@ The **CycleGAN Wall Colorization Project** leverages the power of CycleGAN and a
 ```bash
 git clone https://github.com/tamikazi/ColorSwapNet.git
 cd ColorSwapNet
+
+conda create -n myenv --file requirements.txt
+conda activate myenv
+```
+
+If you want to test a single image:
+
+```bash
+cd main
+python colorswapnet.py
 ```
 
 ## Usage
@@ -60,7 +70,7 @@ cd ColorSwapNet
 cyclegan-wall-colorization/
 ├── datasets/
 │   └── dataset_cyclegan.py         # Dataset classes for CycleGAN
-    └── dataset_seg.py              # Dataset classes for Segmentation
+│   └── dataset_seg.py              # Dataset classes for Segmentation
 ├── models/
 │   ├── models_cyclegan/
 │   │   ├── generator.py            # CycleGAN Generator
@@ -75,9 +85,11 @@ cyclegan-wall-colorization/
 │       ├── eval.py                  # Evaluation script for Segmentation
 │       └── train.py                 # Training script for Segmentation
 ├── main/
+│   └── colorswapnet.py              # Main program for processing a single image
 │   └── process_data.py              # Data preprocessing script
 │   └── cyclegan_train.py            # Main training for CycleGAN
 │   └── wall_seg.py                  # Main training for Segmentation
+│   └── wall_seg_mask.py             # Get mask and boundary overlay images
 ├── utils/
 │   ├── constants.py                 # Constant definitions
 │   └── utils.py                     # General utility functions
@@ -104,23 +116,3 @@ The project relies on the following key libraries:
 - **TorchMetrics**: Evaluation metrics like SSIM and FID.
 
 *Ensure CUDA is properly configured for GPU acceleration.*
-
-Notes:
-
-There's two separate datasets because the input to the gan might be slightly different in terms of image size, which would change how the mask was downsampled. Same for the resnet model, not exactly sure what would be different so separated them for now.
-
-Make sure to ignore index -1 at some point, for example in the loss function:
-```
-crit = nn.NLLLoss(ignore_index=-1)
-```
-Index -1 are don't cares, 0 is wall, 1 is everything else.
-
----
-
-## Image Segmentation
-
-Adapted from the papers and code by Mihailo Bjekic et al.:
-
-- [Getting Started with Wall Segmentation](https://www.researchgate.net/publication/363059238_Getting_Started_with_Wall_Segmentation)
-- [Wall segmentation in 2D images using convolutional neural networks](https://www.researchgate.net/publication/373861585_Wall_segmentation_in_2D_images_using_convolutional_neural_networks)
-- [Wall segmentation code](https://github.com/bjekic/WallSegmentation/tree/main)
